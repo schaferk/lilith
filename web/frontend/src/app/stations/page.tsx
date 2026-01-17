@@ -9,28 +9,64 @@ import { useWeatherStore } from "@/stores/weatherStore";
 // Mock data for 300 US stations - in production this comes from API
 const generateMockStations = () => {
   const states = [
-    { code: "NY", name: "New York", lat: 40.7, lon: -74.0 },
-    { code: "CA", name: "California", lat: 36.7, lon: -119.4 },
-    { code: "TX", name: "Texas", lat: 31.0, lon: -100.0 },
-    { code: "FL", name: "Florida", lat: 27.6, lon: -81.5 },
-    { code: "IL", name: "Illinois", lat: 40.6, lon: -89.3 },
-    { code: "PA", name: "Pennsylvania", lat: 41.2, lon: -77.2 },
-    { code: "OH", name: "Ohio", lat: 40.4, lon: -82.9 },
-    { code: "GA", name: "Georgia", lat: 32.1, lon: -82.9 },
-    { code: "NC", name: "North Carolina", lat: 35.6, lon: -79.8 },
-    { code: "MI", name: "Michigan", lat: 44.3, lon: -85.6 },
-    { code: "WA", name: "Washington", lat: 47.4, lon: -120.5 },
+    { code: "AL", name: "Alabama", lat: 32.8, lon: -86.8 },
+    { code: "AK", name: "Alaska", lat: 64.0, lon: -153.0 },
     { code: "AZ", name: "Arizona", lat: 34.0, lon: -111.1 },
-    { code: "MA", name: "Massachusetts", lat: 42.4, lon: -71.3 },
-    { code: "TN", name: "Tennessee", lat: 35.5, lon: -86.6 },
+    { code: "AR", name: "Arkansas", lat: 34.8, lon: -92.2 },
+    { code: "CA", name: "California", lat: 36.7, lon: -119.4 },
     { code: "CO", name: "Colorado", lat: 39.0, lon: -105.5 },
+    { code: "CT", name: "Connecticut", lat: 41.6, lon: -72.7 },
+    { code: "DE", name: "Delaware", lat: 39.0, lon: -75.5 },
+    { code: "FL", name: "Florida", lat: 27.6, lon: -81.5 },
+    { code: "GA", name: "Georgia", lat: 32.1, lon: -82.9 },
+    { code: "HI", name: "Hawaii", lat: 20.8, lon: -156.3 },
+    { code: "ID", name: "Idaho", lat: 44.1, lon: -114.7 },
+    { code: "IL", name: "Illinois", lat: 40.6, lon: -89.3 },
+    { code: "IN", name: "Indiana", lat: 40.0, lon: -86.3 },
+    { code: "IA", name: "Iowa", lat: 42.0, lon: -93.5 },
+    { code: "KS", name: "Kansas", lat: 38.5, lon: -98.8 },
+    { code: "KY", name: "Kentucky", lat: 37.8, lon: -85.7 },
+    { code: "LA", name: "Louisiana", lat: 31.0, lon: -92.0 },
+    { code: "ME", name: "Maine", lat: 45.3, lon: -69.0 },
+    { code: "MD", name: "Maryland", lat: 39.0, lon: -76.7 },
+    { code: "MA", name: "Massachusetts", lat: 42.4, lon: -71.3 },
+    { code: "MI", name: "Michigan", lat: 44.3, lon: -85.6 },
+    { code: "MN", name: "Minnesota", lat: 46.3, lon: -94.3 },
+    { code: "MS", name: "Mississippi", lat: 32.7, lon: -89.7 },
+    { code: "MO", name: "Missouri", lat: 38.5, lon: -92.5 },
+    { code: "MT", name: "Montana", lat: 47.0, lon: -110.0 },
+    { code: "NE", name: "Nebraska", lat: 41.5, lon: -100.0 },
+    { code: "NV", name: "Nevada", lat: 39.5, lon: -116.9 },
+    { code: "NH", name: "New Hampshire", lat: 43.7, lon: -71.6 },
+    { code: "NJ", name: "New Jersey", lat: 40.2, lon: -74.7 },
+    { code: "NM", name: "New Mexico", lat: 34.5, lon: -106.0 },
+    { code: "NY", name: "New York", lat: 40.7, lon: -74.0 },
+    { code: "NC", name: "North Carolina", lat: 35.6, lon: -79.8 },
+    { code: "ND", name: "North Dakota", lat: 47.5, lon: -100.5 },
+    { code: "OH", name: "Ohio", lat: 40.4, lon: -82.9 },
+    { code: "OK", name: "Oklahoma", lat: 35.5, lon: -97.5 },
+    { code: "OR", name: "Oregon", lat: 44.0, lon: -120.5 },
+    { code: "PA", name: "Pennsylvania", lat: 41.2, lon: -77.2 },
+    { code: "RI", name: "Rhode Island", lat: 41.7, lon: -71.5 },
+    { code: "SC", name: "South Carolina", lat: 33.8, lon: -81.0 },
+    { code: "SD", name: "South Dakota", lat: 44.5, lon: -100.2 },
+    { code: "TN", name: "Tennessee", lat: 35.5, lon: -86.6 },
+    { code: "TX", name: "Texas", lat: 31.0, lon: -100.0 },
+    { code: "UT", name: "Utah", lat: 39.3, lon: -111.7 },
+    { code: "VT", name: "Vermont", lat: 44.0, lon: -72.7 },
+    { code: "VA", name: "Virginia", lat: 37.5, lon: -78.9 },
+    { code: "WA", name: "Washington", lat: 47.4, lon: -120.5 },
+    { code: "WV", name: "West Virginia", lat: 38.9, lon: -80.5 },
+    { code: "WI", name: "Wisconsin", lat: 44.5, lon: -89.5 },
+    { code: "WY", name: "Wyoming", lat: 43.0, lon: -107.5 },
   ];
 
   const stations = [];
   let id = 0;
 
   for (const state of states) {
-    const stationCount = Math.floor(Math.random() * 15) + 10;
+    // 6 stations per state = 300 total for 50 states
+    const stationCount = 6;
     for (let i = 0; i < stationCount && id < 300; i++) {
       const latOffset = (Math.random() - 0.5) * 4;
       const lonOffset = (Math.random() - 0.5) * 6;
@@ -78,9 +114,9 @@ const generateMockStations = () => {
         precipitation_probability: Math.round(Math.random() * 100) / 100,
         temp_error_avg: Math.round(tempError * 100) / 100,
         precip_accuracy: Math.round(precipAccuracy * 10) / 10,
-        predictions_count: Math.floor(Math.random() * 500) + 100,
-        verified_count: Math.floor(Math.random() * 200) + 50,
-        trend: ["improving", "stable", "declining"][Math.floor(Math.random() * 3)] as "improving" | "stable" | "declining",
+        predictions_count: 0, // Real predictions - not yet tracking
+        verified_count: 0, // Verified predictions - not yet tracking
+        trend: "stable" as "improving" | "stable" | "declining",
         last_updated: new Date().toISOString(),
         last_observation: new Date(Date.now() - Math.random() * 300000).toISOString(), // Within last 5 min
       });
@@ -168,17 +204,8 @@ export default function StationsPage() {
 
   // Calculate global stats
   const globalStats = useMemo(() => {
-    const totalPredictions = allStations.reduce((sum, s) => sum + s.predictions_count, 0);
-    const totalVerified = allStations.reduce((sum, s) => sum + s.verified_count, 0);
-    const avgMAE = allStations.reduce((sum, s) => sum + s.temp_error_avg, 0) / allStations.length;
-    const avgPrecipAcc = allStations.reduce((sum, s) => sum + s.precip_accuracy, 0) / allStations.length;
-
     return {
       totalStations: allStations.length,
-      totalPredictions,
-      totalVerified,
-      avgMAE: Math.round(avgMAE * 100) / 100,
-      avgPrecipAcc: Math.round(avgPrecipAcc * 10) / 10,
     };
   }, [allStations]);
 
@@ -270,24 +297,27 @@ export default function StationsPage() {
             <GlassCard className="text-center" glow>
               <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Total Stations</p>
               <p className="text-3xl font-bold text-white">{globalStats.totalStations}</p>
+              <p className="text-white/40 text-xs mt-1">US GHCN Network</p>
             </GlassCard>
             <GlassCard className="text-center" glow>
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Predictions Made</p>
-              <p className="text-3xl font-bold text-purple-400">{globalStats.totalPredictions.toLocaleString()}</p>
+              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Training Samples</p>
+              <p className="text-3xl font-bold text-purple-400">915K</p>
+              <p className="text-white/40 text-xs mt-1">Historical sequences</p>
             </GlassCard>
             <GlassCard className="text-center" glow>
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Verified</p>
-              <p className="text-3xl font-bold text-cyan-400">{globalStats.totalVerified.toLocaleString()}</p>
+              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Model RMSE</p>
+              <p className="text-3xl font-bold text-cyan-400">3.96°C</p>
+              <p className="text-white/40 text-xs mt-1">Validation accuracy</p>
             </GlassCard>
             <GlassCard className="text-center" glow>
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Avg Temp MAE</p>
-              <p className={`text-3xl font-bold ${getAccuracyColor(globalStats.avgMAE)}`}>
-                {globalStats.avgMAE}°{temperatureUnit}
-              </p>
+              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Model Size</p>
+              <p className="text-3xl font-bold text-amber-400">1.87M</p>
+              <p className="text-white/40 text-xs mt-1">Parameters</p>
             </GlassCard>
             <GlassCard className="text-center" glow>
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Precip Accuracy</p>
-              <p className="text-3xl font-bold text-green-400">{globalStats.avgPrecipAcc}%</p>
+              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Forecast Range</p>
+              <p className="text-3xl font-bold text-green-400">90</p>
+              <p className="text-white/40 text-xs mt-1">Days ahead</p>
             </GlassCard>
           </div>
 

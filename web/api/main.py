@@ -71,25 +71,37 @@ async def lifespan(app: FastAPI):
 
     # Load configuration
     import os
+    from pathlib import Path
 
     checkpoint_path = os.environ.get("LILITH_CHECKPOINT", None)
-    encoder_path = os.environ.get("LILITH_ENCODER", None)
-    stations_path = os.environ.get("LILITH_STATIONS", None)
+
+    # Try to find checkpoint automatically
+    if checkpoint_path is None:
+        # Look for default checkpoint location
+        default_paths = [
+            Path(__file__).parent.parent.parent / "checkpoints" / "lilith_best.pt",
+            Path(__file__).parent.parent.parent / "checkpoints" / "lilith_final.pt",
+        ]
+        for p in default_paths:
+            if p.exists():
+                checkpoint_path = str(p)
+                logger.info(f"Found checkpoint at {checkpoint_path}")
+                break
 
     # Load model if checkpoint provided
-    if checkpoint_path:
+    if checkpoint_path and Path(checkpoint_path).exists():
         try:
-            from inference.forecast import Forecaster
+            from inference.simple_forecaster import SimpleForecaster
 
-            _forecaster = Forecaster.from_pretrained(
-                checkpoint_path,
+            _forecaster = SimpleForecaster(
+                checkpoint_path=checkpoint_path,
                 device="cuda" if TORCH_AVAILABLE and torch.cuda.is_available() else "cpu",
-                encoder_path=encoder_path,
-                stations_path=stations_path,
             )
-            logger.info("Model loaded successfully")
+            logger.info(f"Model loaded successfully (RMSE: {_forecaster.checkpoint.get('val_rmse', 'N/A')}°C)")
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
+            import traceback
+            traceback.print_exc()
             _forecaster = None
     else:
         logger.warning("No checkpoint provided. Running in demo mode.")
@@ -170,34 +182,45 @@ async def create_forecast(request: ForecastRequest):
         return _generate_demo_forecast(request)
 
     try:
+        # Use SimpleForecaster interface
         response = _forecaster.forecast(
             latitude=request.latitude,
             longitude=request.longitude,
             forecast_days=request.days,
-            include_uncertainty=request.include_uncertainty,
-            ensemble_members=request.ensemble_members,
         )
 
-        # Convert to Pydantic model
+        # Convert SimpleForecaster response to Pydantic model
+        forecasts = []
+        for f in response['forecasts']:
+            daily = DailyForecast(
+                date=f['date'],
+                temperature_max=f['temperature_high'],
+                temperature_min=f['temperature_low'],
+                precipitation=f['precipitation_mm'],
+                precipitation_probability=f['precipitation_probability'] / 100.0,
+            )
+
+            if request.include_uncertainty:
+                # Add uncertainty bounds based on model RMSE (~4°C)
+                lead_days = f['day']
+                uncertainty = 2.0 + (lead_days / 14) * 2.0  # Widens with lead time
+                daily.temperature_max_lower = round(f['temperature_high'] - uncertainty, 1)
+                daily.temperature_max_upper = round(f['temperature_high'] + uncertainty, 1)
+                daily.temperature_min_lower = round(f['temperature_low'] - uncertainty, 1)
+                daily.temperature_min_upper = round(f['temperature_low'] + uncertainty, 1)
+
+            forecasts.append(daily)
+
+        # Get nearby stations for display
+        nearby_stations = _get_nearby_stations(request.latitude, request.longitude)
+
         return ForecastResponse(
             location=Location(latitude=request.latitude, longitude=request.longitude),
-            generated_at=response.generated_at,
-            model_version=response.model_version,
-            forecast_days=response.forecast_days,
-            forecasts=[
-                DailyForecast(
-                    date=f.date,
-                    temperature_max=f.temperature_max,
-                    temperature_min=f.temperature_min,
-                    precipitation=f.precipitation,
-                    precipitation_probability=f.precipitation_probability,
-                    temperature_max_lower=f.temperature_max_lower,
-                    temperature_max_upper=f.temperature_max_upper,
-                    temperature_min_lower=f.temperature_min_lower,
-                    temperature_min_upper=f.temperature_min_upper,
-                )
-                for f in response.forecasts
-            ],
+            generated_at=response['generated_at'],
+            model_version=f"SimpleLILITH v1 (RMSE: {response.get('model_rmse', 'N/A')}°C)",
+            forecast_days=response['forecast_days'],
+            forecasts=forecasts,
+            nearby_stations=nearby_stations,
         )
 
     except Exception as e:
@@ -322,8 +345,53 @@ async def create_hourly_forecast(request: HourlyForecastRequest):
     if _forecaster is None:
         return _generate_demo_hourly_forecast(request)
 
-    # Real model inference would go here
-    raise HTTPException(status_code=501, detail="Hourly forecast not yet implemented for trained model")
+    try:
+        # Use SimpleForecaster's hourly interface
+        response = _forecaster.forecast_hourly(
+            latitude=request.latitude,
+            longitude=request.longitude,
+            hours=request.hours,
+        )
+
+        # Convert to Pydantic model
+        import datetime
+
+        forecasts = []
+        for h in response['hourly']:
+            hourly = HourlyForecast(
+                datetime=h['time'],
+                hour=h['hour'],
+                temperature=h['temperature'],
+                feels_like=h['temperature'],  # SimpleForecaster doesn't compute feels_like
+                humidity=50.0,  # Not modeled
+                precipitation=0.0,
+                precipitation_probability=h['precipitation_probability'] / 100.0,
+                wind_speed=0.0,  # Not modeled
+                wind_direction=0.0,
+                cloud_cover=0.0,
+                pressure=1013.0,
+                uv_index=0.0,
+            )
+
+            if request.include_uncertainty:
+                uncertainty = 2.0
+                hourly.temperature_lower = round(h['temperature'] - uncertainty, 1)
+                hourly.temperature_upper = round(h['temperature'] + uncertainty, 1)
+
+            forecasts.append(hourly)
+
+        return HourlyForecastResponse(
+            location=Location(latitude=request.latitude, longitude=request.longitude),
+            generated_at=response['generated_at'],
+            model_version="SimpleLILITH v1 (hourly interpolated)",
+            forecast_hours=response['hours'],
+            forecasts=forecasts,
+        )
+
+    except Exception as e:
+        logger.exception(f"Hourly forecast error: {e}")
+        # Fall back to demo if model fails
+        return _generate_demo_hourly_forecast(request)
 
 
 # Prediction accuracy endpoints

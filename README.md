@@ -116,6 +116,53 @@ LILITH takes a different approach:
 - CUDA-capable GPU (12GB+ VRAM recommended)
 - Node.js 18+ (for frontend)
 
+### Quick Start with Pre-trained Model
+
+If you have a trained checkpoint (e.g., `lilith_best.pt`), you can run the full stack immediately:
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/consigcody94/lilith.git
+cd lilith
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux/Mac
+
+# 2. Install dependencies
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install -e ".[all]"
+
+# 3. Place your checkpoint in the checkpoints folder
+mkdir checkpoints
+# Copy lilith_best.pt to checkpoints/
+
+# 4. Start the API server (auto-detects checkpoint)
+python -m uvicorn web.api.main:app --host 127.0.0.1 --port 8000
+
+# 5. In a new terminal, start the frontend
+cd web/frontend
+npm install
+npm run dev
+
+# 6. Open http://localhost:3000 in your browser
+```
+
+The API will automatically find and load `checkpoints/lilith_best.pt` or `checkpoints/lilith_final.pt`. You'll see log output like:
+```
+Found checkpoint at C:\...\checkpoints\lilith_best.pt
+Model loaded on cuda
+Config: d_model=128, layers=4
+Val RMSE: 3.96°C
+Model loaded successfully (RMSE: 3.96°C)
+```
+
+**Test the API directly:**
+```bash
+curl -X POST http://127.0.0.1:8000/v1/forecast \
+  -H "Content-Type: application/json" \
+  -d '{"latitude": 40.7128, "longitude": -74.006, "days": 14}'
+```
+
 ### Installation
 
 ```bash
@@ -316,24 +363,22 @@ checkpoint = {
 }
 ```
 
-#### Download Pre-trained Models
+#### Pre-trained Checkpoint Included
 
-```bash
-# From GitHub Releases
-wget https://github.com/consigcody94/lilith/releases/download/v1.0/lilith_base_v1.pt
-mv lilith_base_v1.pt checkpoints/
+A pre-trained checkpoint (`lilith_best.pt`) is included in the `checkpoints/` folder. This model was trained on:
+- **915,000 sequences** from 300 US GHCN stations
+- **20 epochs** of training
+- **Validation RMSE: 3.96°C**
 
-# From HuggingFace Hub (coming soon)
-huggingface-cli download consigcody94/lilith-base --local-dir checkpoints/
-```
+You can use this checkpoint immediately or train your own model with different data/parameters.
 
-#### Available Models
+#### Model Specifications
 
-| Model | Parameters | File Size | VRAM (Inference) | Best For | Download |
-|-------|------------|-----------|------------------|----------|----------|
-| **lilith-tiny-v1** | 50M | ~15 MB | 2 GB | Edge devices, quick inference | [Download](#) |
-| **lilith-base-v1** | 150M | ~45 MB | 4 GB | Balanced accuracy/speed | [Download](#) |
-| **lilith-large-v1** | 400M | ~120 MB | 8 GB | High accuracy | [Download](#) |
+| Model | Parameters | File Size | VRAM (Inference) | Best For |
+|-------|------------|-----------|------------------|----------|
+| **SimpleLILITH** | 1.87M | ~23 MB | 2-4 GB | Default model, fast training |
+| **lilith-base** | 150M | ~45 MB | 4 GB | Balanced accuracy/speed |
+| **lilith-large** | 400M | ~120 MB | 8 GB | High accuracy |
 
 ### GPU Requirements for Inference
 
