@@ -12,6 +12,14 @@ import { HourlyScroll } from "@/components/forecast/HourlyScroll";
 import { WeatherBackground } from "@/components/ui/WeatherBackground";
 import { Settings } from "@/components/Settings";
 import { AccuracyTracker } from "@/components/accuracy/AccuracyTracker";
+import { Hero } from "@/components/ui/Hero";
+import dynamic from "next/dynamic";
+
+const Map = dynamic(() => import("@/components/Map"), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full bg-white/5 animate-pulse rounded-2xl" />
+});
+
 import { useForecast, useHourlyForecast, useAccuracyReport } from "@/hooks/useForecast";
 import { useWeatherStore } from "@/stores/weatherStore";
 
@@ -90,21 +98,19 @@ export default function Home() {
               <div className="flex bg-white/[0.06] backdrop-blur-sm rounded-xl p-1 border border-white/[0.08]">
                 <button
                   onClick={() => setTemperatureUnit("C")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300 ${
-                    temperatureUnit === "C"
-                      ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30"
-                      : "text-white/50 hover:text-white hover:bg-white/[0.05]"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300 ${temperatureUnit === "C"
+                    ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30"
+                    : "text-white/50 hover:text-white hover:bg-white/[0.05]"
+                    }`}
                 >
                   °C
                 </button>
                 <button
                   onClick={() => setTemperatureUnit("F")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300 ${
-                    temperatureUnit === "F"
-                      ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30"
-                      : "text-white/50 hover:text-white hover:bg-white/[0.05]"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300 ${temperatureUnit === "F"
+                    ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30"
+                    : "text-white/50 hover:text-white hover:bg-white/[0.05]"
+                    }`}
                 >
                   °F
                 </button>
@@ -142,40 +148,66 @@ export default function Home() {
 
         {/* Main Content */}
         <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Hero Section - Location & Search */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
-            {/* Location Search */}
-            <div className="max-w-xl mx-auto mb-6">
-              <LocationSearch onLocationSelect={setLocation} />
-            </div>
+          {/* Hero Section */}
+          <div className="mb-16">
+            <Hero />
+          </div>
 
-            {/* Current Location Display */}
-            <div className="text-center">
-              <motion.h2
-                key={location.name}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent mb-2"
-              >
-                {location.name}
-              </motion.h2>
-              <div className="flex items-center justify-center gap-4 text-sm text-white/40">
-                <span className="flex items-center gap-1.5">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {location.latitude.toFixed(2)}°N, {Math.abs(location.longitude).toFixed(2)}°W
-                </span>
-                <span className="w-1 h-1 rounded-full bg-white/20" />
-                <span className="text-purple-400/70">90-Day Forecast</span>
+          <div id="forecast-section" className="scroll-mt-24">
+            {/* Hero Section - Location & Search */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="mb-8"
+            >
+              {/* Location Search */}
+              <div className="max-w-xl mx-auto mb-8">
+                <LocationSearch onLocationSelect={setLocation} />
               </div>
-            </div>
-          </motion.div>
+
+              {/* Map & Location Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 items-center">
+                <div className="text-left">
+                  <motion.h2
+                    key={location.name}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent mb-4"
+                  >
+                    {location.name}
+                  </motion.h2>
+                  <div className="flex flex-col gap-2 text-sm text-white/40">
+                    <span className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {location.latitude.toFixed(4)}°N, {Math.abs(location.longitude).toFixed(4)}°W
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Forecasting range: 90 days
+                    </span>
+                  </div>
+                </div>
+
+                <div className="h-48 md:h-64 rounded-2xl overflow-hidden border border-white/10 shadow-lg relative group">
+                  <Map
+                    center={[location.latitude, location.longitude]}
+                    zoom={10}
+                    markers={[{ position: [location.latitude, location.longitude], title: location.name }]}
+                  />
+                  {/* Overlay hint */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                    <p className="text-white font-medium">Interactive Map</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
 
           {/* Error Display */}
           {error && (

@@ -11,7 +11,7 @@ Orchestrates the full data processing workflow:
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import pandas as pd
@@ -36,7 +36,7 @@ class PipelineConfig:
     # Processing
     min_years: int = 30
     min_observations_per_year: int = 300
-    target_variables: list[str] = None
+    target_variables: List[str] = None
 
     # Normalization
     normalize: bool = True
@@ -120,7 +120,7 @@ class FeatureEncoder:
 
         return result
 
-    def inverse_transform(self, df: pd.DataFrame, columns: Optional[list[str]] = None) -> pd.DataFrame:
+    def inverse_transform(self, df: pd.DataFrame, columns: Optional[List[str]] = None) -> pd.DataFrame:
         """Reverse normalization for predictions."""
         result = df.copy()
         columns = columns or list(self.stats.keys())

@@ -6,7 +6,7 @@ with graph-based models.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -30,7 +30,7 @@ class ForecastDataset(Dataset):
 
     def __init__(
         self,
-        data_dir: str | Path,
+        data_dir: Union[str, Path],
         sequence_length: int = 30,
         forecast_length: int = 14,
         max_stations: int = 500,

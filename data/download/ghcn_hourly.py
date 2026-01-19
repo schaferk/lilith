@@ -13,7 +13,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Generator, Optional, List, Union
 
 import httpx
 import pandas as pd
@@ -108,7 +108,7 @@ class GHCNHourlyDownloader:
 
     def __init__(
         self,
-        output_dir: str | Path = "data/raw/ghcn_hourly",
+        output_dir: Union[str, Path] = "data/raw/ghcn_hourly",
         timeout: float = 60.0,
     ):
         self.output_dir = Path(output_dir)
@@ -146,7 +146,7 @@ class GHCNHourlyDownloader:
         logger.success(f"Downloaded station list to {output_path}")
         return output_path
 
-    def parse_stations(self, path: Optional[Path] = None) -> list[HourlyStation]:
+    def parse_stations(self, path: Optional[Path] = None) -> List[HourlyStation]:
         """Parse the station history CSV file."""
         if path is None:
             path = self.output_dir / "isd-history.csv"
@@ -189,7 +189,7 @@ class GHCNHourlyDownloader:
         min_years: int = 0,
         bbox: Optional[tuple[float, float, float, float]] = None,
         active_only: bool = True,
-    ) -> list[HourlyStation]:
+    ) -> List[HourlyStation]:
         """
         Get stations matching criteria.
 
@@ -363,7 +363,7 @@ class GHCNHourlyDownloader:
         wban: str,
         start_year: int,
         end_year: int,
-    ) -> list[Path]:
+    ) -> List[Path]:
         """Download multiple years of data for a station."""
         paths = []
         for year in range(start_year, end_year + 1):
@@ -374,8 +374,8 @@ class GHCNHourlyDownloader:
 
     def download_all(
         self,
-        stations: Optional[list[HourlyStation]] = None,
-        years: Optional[list[int]] = None,
+        stations: Optional[List[HourlyStation]] = None,
+        years: Optional[List[int]] = None,
         max_stations: Optional[int] = None,
         **filter_kwargs,
     ) -> int:

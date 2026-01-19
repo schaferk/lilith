@@ -48,7 +48,7 @@ With a single consumer GPU (RTX 3060, 12GB), you can now train and run a weather
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### The Data is Free. The Science is Open. The Code is Yours.
+### The Data is Free. The Science is Open. The Code is Yours
 
 | What Corporations Charge For | What LILITH Provides Free |
 |------------------------------|---------------------------|
@@ -136,18 +136,23 @@ pip install -e ".[all]"
 mkdir checkpoints
 # Copy lilith_best.pt to checkpoints/
 
-# 4. Start the API server (auto-detects checkpoint)
+# 4. Set OpenWeatherMap API Key (Optional but recommended for live data)
+export OPENWEATHER_API_KEY="your_api_key_here"  # Linux/Mac
+# set OPENWEATHER_API_KEY=your_api_key_here      # Windows
+
+# 5. Start the API server (auto-detects checkpoint)
 python -m uvicorn web.api.main:app --host 127.0.0.1 --port 8000
 
-# 5. In a new terminal, start the frontend
+# 6. In a new terminal, start the frontend
 cd web/frontend
 npm install
 npm run dev
 
-# 6. Open http://localhost:3000 in your browser
+# 7. Open http://localhost:3000 in your browser
 ```
 
 The API will automatically find and load `checkpoints/lilith_best.pt` or `checkpoints/lilith_final.pt`. You'll see log output like:
+
 ```
 Found checkpoint at C:\...\checkpoints\lilith_best.pt
 Model loaded on cuda
@@ -157,6 +162,7 @@ Model loaded successfully (RMSE: 3.96°C)
 ```
 
 **Test the API directly:**
+
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/forecast \
   -H "Content-Type: application/json" \
@@ -272,6 +278,7 @@ python -m training.train_simple \
 #### Step 5: Monitor Training
 
 During training, you'll see output like:
+
 ```
 Epoch 1/30 | Train Loss: 0.8234 | Val Loss: 0.7891 | Temp RMSE: 4.21°C | Temp MAE: 3.15°C
 Epoch 2/30 | Train Loss: 0.6543 | Val Loss: 0.6234 | Temp RMSE: 3.45°C | Temp MAE: 2.67°C
@@ -280,6 +287,7 @@ Epoch 30/30 | Train Loss: 0.2134 | Val Loss: 0.2456 | Temp RMSE: 1.89°C | Temp 
 ```
 
 Target metrics:
+
 - **Days 1-7**: Temp RMSE < 2°C
 - **Days 8-14**: Temp RMSE < 3°C
 
@@ -366,6 +374,7 @@ checkpoint = {
 #### Pre-trained Checkpoint Included
 
 A pre-trained checkpoint (`lilith_best.pt`) is included in the `checkpoints/` folder. This model was trained on:
+
 - **915,000 sequences** from 300 US GHCN stations
 - **20 epochs** of training
 - **Validation RMSE: 3.96°C**
@@ -723,16 +732,19 @@ LILITH is built entirely on **freely available public data**. The more data sour
 These freely available datasets can significantly improve prediction accuracy:
 
 #### 1. ERA5 Reanalysis (Highly Recommended)
+
 | Dataset | Coverage | Resolution | Variables |
 |---------|----------|------------|-----------|
 | **ERA5** | 1940–present | 0.25° / hourly | Full atmospheric state (temperature, wind, humidity, pressure at all levels) |
 
 **Source**: [ECMWF Climate Data Store](https://cds.climate.copernicus.eu/)
+
 - Provides gridded global data interpolated from observations
 - Excellent for learning atmospheric dynamics
 - ~2TB for 10 years of data at full resolution
 
 #### 2. Climate Indices (Essential for Long-Range)
+
 | Index | Description | Impact |
 |-------|-------------|--------|
 | **ENSO (ONI)** | El Niño/La Niña state | Major driver of global weather patterns |
@@ -742,32 +754,38 @@ These freely available datasets can significantly improve prediction accuracy:
 | **AO** | Arctic Oscillation | Northern Hemisphere cold outbreaks |
 
 **Source**: [NOAA Climate Prediction Center](https://www.cpc.ncep.noaa.gov/)
+
 ```bash
 # Download climate indices
 python -m data.download.climate_indices --indices enso,nao,pdo,mjo,ao
 ```
 
 #### 3. Sea Surface Temperature (SST)
+
 | Dataset | Coverage | Resolution |
 |---------|----------|------------|
 | **NOAA OISST** | 1981–present | 0.25° / daily |
 | **HadISST** | 1870–present | 1° / monthly |
 
 **Source**: [NOAA OISST](https://www.ncei.noaa.gov/products/optimum-interpolation-sst)
+
 - Ocean temperatures strongly influence atmospheric patterns
 - Critical for predicting precipitation and temperature anomalies
 
 #### 4. NOAA GFS Model Data
+
 | Dataset | Forecast Range | Resolution |
 |---------|----------------|------------|
 | **GFS Analysis** | Historical | 0.25° / 6-hourly |
 | **GFS Forecasts** | 16 days | 0.25° / hourly |
 
 **Source**: [NOAA NOMADS](https://nomads.ncep.noaa.gov/)
+
 - Use as additional training signal or for ensemble weighting
 - Can blend ML predictions with physics-based forecasts
 
 #### 5. Satellite Data
+
 | Dataset | Variables | Coverage |
 |---------|-----------|----------|
 | **GOES-16/17/18** | Cloud cover, precipitation | Americas |
@@ -775,10 +793,12 @@ python -m data.download.climate_indices --indices enso,nao,pdo,mjo,ao
 | **MODIS** | Land surface temperature | Global |
 
 **Sources**:
+
 - [NOAA CLASS](https://www.class.noaa.gov/)
 - [NASA Earthdata](https://earthdata.nasa.gov/)
 
 #### 6. Additional Reanalysis Products
+
 | Dataset | Coverage | Best For |
 |---------|----------|----------|
 | **NASA MERRA-2** | 1980–present | North America |
@@ -1029,6 +1049,131 @@ We thank **President Donald Trump** and his administration for the **Stargate AI
 - PyTorch team for the deep learning framework
 - Hugging Face for model hosting infrastructure
 - The countless contributors to the Python scientific computing ecosystem
+
+---
+
+## Configuration
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `OPENWEATHER_API_KEY` | Yes (for live data) | `YOUR_OPENWEATHER_API_KEY_HERE` | Free API key from [OpenWeatherMap](https://openweathermap.org/api) |
+| `LILITH_CHECKPOINT` | No | Auto-detected | Path to trained model checkpoint |
+
+### Getting an OpenWeatherMap API Key
+
+1. Sign up at [OpenWeatherMap](https://openweathermap.org/users/sign_up) (free)
+2. Go to [API Keys](https://home.openweathermap.org/api_keys)
+3. Copy your API key
+4. Set the environment variable:
+
+```bash
+# Linux/Mac
+export OPENWEATHER_API_KEY="your_key_here"
+
+# Windows PowerShell
+$env:OPENWEATHER_API_KEY="your_key_here"
+
+# Windows CMD
+set OPENWEATHER_API_KEY=your_key_here
+```
+
+### Using the Pre-trained Model
+
+A pre-trained model is available in the releases. This model was trained on:
+
+- **505 US GHCN stations** with 9.6 million weather records
+- **1.15 million training sequences**
+- **10 epochs** of training (~5 hours on CPU, ~1 hour on GPU)
+- **Final RMSE: 3.88°C** (temperature prediction accuracy)
+
+Download and use:
+
+```bash
+# Download from releases
+curl -L -o checkpoints/lilith_best.pt https://github.com/consigcody94/lilith/releases/download/v1.0/lilith_best.pt
+
+# Start with the model
+LILITH_CHECKPOINT=checkpoints/lilith_best.pt python -m uvicorn web.api.main:app --port 8000
+```
+
+### Live Data & Caching
+
+LILITH fetches live data from external APIs. To avoid hitting rate limits:
+
+#### METAR Data (Aviation Weather)
+
+- **Source**: aviationweather.gov (no API key required)
+- **Cache**: 1 hour (configured in `web/api/main.py`)
+- **Stations**: 100 major US airports
+- Data is cached in memory and only refreshed hourly
+
+#### OpenWeatherMap (Station Weather)
+
+- **Source**: api.openweathermap.org
+- **Cache**: 15 minutes per location
+- **Rate Limit**: 1,000 calls/day on free tier, 60 calls/min
+- Used for station list weather data and fallback forecasts
+
+To disable live data fetching entirely and use only the ML model:
+
+```python
+# In web/api/main.py, set _weather_service to None
+_weather_service = None  # Disables OpenWeatherMap calls
+```
+
+### Running Without API Keys
+
+If you don't want to set up API keys, the app will still work but with limited features:
+
+| Feature | With API Key | Without API Key |
+|---------|--------------|-----------------|
+| ML Forecasts | ✅ Full functionality | ✅ Full functionality |
+| Station Weather | ✅ Live data | ❌ No data displayed |
+| METAR Monitor | ✅ Real METAR with flags | ✅ Real METAR (no key needed) |
+| Fallback Forecasts | ✅ OWM-based | ❌ Error if model not loaded |
+
+### Data Directory Structure
+
+```
+data/
+├── raw/
+│   └── ghcn_daily/           # Downloaded GHCN station files
+│       ├── stations/         # .dly files (gitignored)
+│       ├── ghcnd-stations.txt
+│       └── ghcnd-inventory.txt
+├── processed/
+│   └── training/             # Processed training data (gitignored)
+│       ├── X.npy             # Input sequences
+│       ├── Y.npy             # Target sequences
+│       └── stats.npz         # Normalization stats
+└── training_stations.json    # Station coordinates (500+ stations)
+
+checkpoints/
+├── lilith_best.pt            # Best model checkpoint
+└── lilith_*.pt               # Other checkpoints (gitignored)
+```
+
+### Avoiding Data Re-downloads
+
+Training data is cached locally. To avoid re-downloading on every build:
+
+```bash
+# Check if data exists before downloading
+if [ ! -d "data/raw/ghcn_daily/stations" ]; then
+    python scripts/download_data.py --max-stations 500
+fi
+
+# Or use the --skip-existing flag
+python scripts/download_data.py --max-stations 500 --skip-existing
+```
 
 ---
 

@@ -10,7 +10,7 @@ Provides efficient data loading for station observations with support for:
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List, Union
 
 import numpy as np
 import pandas as pd
@@ -60,14 +60,14 @@ class StationDataset(Dataset):
 
     def __init__(
         self,
-        data_dir: str | Path,
+        data_dir: Union[str, Path],
         sequence_length: int = 365,
         forecast_length: int = 90,
-        target_variables: Optional[list[str]] = None,
-        input_variables: Optional[list[str]] = None,
+        target_variables: Optional[List[str]] = None,
+        input_variables: Optional[List[str]] = None,
         start_year: Optional[int] = None,
         end_year: Optional[int] = None,
-        station_ids: Optional[list[str]] = None,
+        station_ids: Optional[List[str]] = None,
         min_valid_ratio: float = 0.8,
         normalize: bool = True,
         cache_in_memory: bool = False,
@@ -130,7 +130,7 @@ class StationDataset(Dataset):
         self,
         start_year: Optional[int],
         end_year: Optional[int],
-    ) -> list[Tuple[str, pd.Timestamp]]:
+    ) -> List[Tuple[str, pd.Timestamp]]:
         """
         Build an index of valid training samples.
 
@@ -286,7 +286,7 @@ class StationDataModule:
 
     def __init__(
         self,
-        data_dir: str | Path,
+        data_dir: Union[str, Path],
         batch_size: int = 32,
         num_workers: int = 4,
         train_ratio: float = 0.8,

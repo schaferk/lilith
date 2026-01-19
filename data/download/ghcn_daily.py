@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Generator, Optional, List, Union
 
 import httpx
 import pandas as pd
@@ -84,7 +84,7 @@ class GHCNDailyDownloader:
 
     def __init__(
         self,
-        output_dir: str | Path = "data/raw/ghcn_daily",
+        output_dir: Union[str, Path] = "data/raw/ghcn_daily",
         timeout: float = 60.0,
     ):
         self.output_dir = Path(output_dir)
@@ -149,7 +149,7 @@ class GHCNDailyDownloader:
         logger.success(f"Downloaded inventory to {output_path}")
         return output_path
 
-    def parse_stations(self, path: Optional[Path] = None) -> list[Station]:
+    def parse_stations(self, path: Optional[Path] = None) -> List[Station]:
         """
         Parse the stations metadata file.
 
@@ -235,9 +235,9 @@ class GHCNDailyDownloader:
         self,
         country: Optional[str] = None,
         min_years: int = 0,
-        elements: Optional[list[str]] = None,
+        elements: Optional[List[str]] = None,
         bbox: Optional[tuple[float, float, float, float]] = None,
-    ) -> list[Station]:
+    ) -> List[Station]:
         """
         Get stations matching criteria.
 
@@ -266,30 +266,35 @@ class GHCNDailyDownloader:
                 if min_lon <= s.longitude <= max_lon and min_lat <= s.latitude <= max_lat
             ]
 
-        # Filter by data availability
+        # Filter by data availability using VECTORIZED pandas operations (fast!)
         if min_years > 0 or elements:
-            valid_ids = set()
             elements = elements or list(self.ELEMENTS.keys())
-
-            for station in stations:
-                station_inv = inventory[inventory["station_id"] == station.id]
-
-                # Check each required element
-                has_all_elements = True
-                max_years = 0
-
-                for element in elements:
-                    elem_inv = station_inv[station_inv["element"] == element]
-                    if elem_inv.empty:
-                        has_all_elements = False
-                        break
-
-                    years = elem_inv.iloc[0]["last_year"] - elem_inv.iloc[0]["first_year"]
-                    max_years = max(max_years, years)
-
-                if has_all_elements and max_years >= min_years:
-                    valid_ids.add(station.id)
-
+            
+            # Create a station ID set for fast lookup
+            station_ids = {s.id for s in stations}
+            
+            # Filter inventory to only include our stations and required elements
+            inv_filtered = inventory[
+                (inventory["station_id"].isin(station_ids)) &
+                (inventory["element"].isin(elements))
+            ].copy()
+            
+            # Calculate years of data for each station-element combo
+            inv_filtered["years"] = inv_filtered["last_year"] - inv_filtered["first_year"]
+            
+            # Group by station and check requirements
+            station_stats = inv_filtered.groupby("station_id").agg({
+                "element": "nunique",  # Count unique elements
+                "years": "max"         # Max years of any element
+            }).reset_index()
+            
+            # Filter stations that have all required elements and enough years
+            valid_stations = station_stats[
+                (station_stats["element"] >= len(elements)) &
+                (station_stats["years"] >= min_years)
+            ]["station_id"].tolist()
+            
+            valid_ids = set(valid_stations)
             stations = [s for s in stations if s.id in valid_ids]
 
         logger.info(f"Found {len(stations)} matching stations")
@@ -427,10 +432,10 @@ class GHCNDailyDownloader:
 
     def download_all(
         self,
-        stations: Optional[list[Station]] = None,
+        stations: Optional[List[Station]] = None,
         max_stations: Optional[int] = None,
         **filter_kwargs,
-    ) -> list[Path]:
+    ) -> List[Path]:
         """
         Download data for multiple stations.
 

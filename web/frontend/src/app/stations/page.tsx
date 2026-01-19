@@ -5,128 +5,13 @@ import Link from "next/link";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { WeatherBackground } from "@/components/ui/WeatherBackground";
 import { useWeatherStore } from "@/stores/weatherStore";
+import dynamic from "next/dynamic";
+import { useStations } from "@/hooks/useStations";
 
-// Mock data for 300 US stations - in production this comes from API
-const generateMockStations = () => {
-  const states = [
-    { code: "AL", name: "Alabama", lat: 32.8, lon: -86.8 },
-    { code: "AK", name: "Alaska", lat: 64.0, lon: -153.0 },
-    { code: "AZ", name: "Arizona", lat: 34.0, lon: -111.1 },
-    { code: "AR", name: "Arkansas", lat: 34.8, lon: -92.2 },
-    { code: "CA", name: "California", lat: 36.7, lon: -119.4 },
-    { code: "CO", name: "Colorado", lat: 39.0, lon: -105.5 },
-    { code: "CT", name: "Connecticut", lat: 41.6, lon: -72.7 },
-    { code: "DE", name: "Delaware", lat: 39.0, lon: -75.5 },
-    { code: "FL", name: "Florida", lat: 27.6, lon: -81.5 },
-    { code: "GA", name: "Georgia", lat: 32.1, lon: -82.9 },
-    { code: "HI", name: "Hawaii", lat: 20.8, lon: -156.3 },
-    { code: "ID", name: "Idaho", lat: 44.1, lon: -114.7 },
-    { code: "IL", name: "Illinois", lat: 40.6, lon: -89.3 },
-    { code: "IN", name: "Indiana", lat: 40.0, lon: -86.3 },
-    { code: "IA", name: "Iowa", lat: 42.0, lon: -93.5 },
-    { code: "KS", name: "Kansas", lat: 38.5, lon: -98.8 },
-    { code: "KY", name: "Kentucky", lat: 37.8, lon: -85.7 },
-    { code: "LA", name: "Louisiana", lat: 31.0, lon: -92.0 },
-    { code: "ME", name: "Maine", lat: 45.3, lon: -69.0 },
-    { code: "MD", name: "Maryland", lat: 39.0, lon: -76.7 },
-    { code: "MA", name: "Massachusetts", lat: 42.4, lon: -71.3 },
-    { code: "MI", name: "Michigan", lat: 44.3, lon: -85.6 },
-    { code: "MN", name: "Minnesota", lat: 46.3, lon: -94.3 },
-    { code: "MS", name: "Mississippi", lat: 32.7, lon: -89.7 },
-    { code: "MO", name: "Missouri", lat: 38.5, lon: -92.5 },
-    { code: "MT", name: "Montana", lat: 47.0, lon: -110.0 },
-    { code: "NE", name: "Nebraska", lat: 41.5, lon: -100.0 },
-    { code: "NV", name: "Nevada", lat: 39.5, lon: -116.9 },
-    { code: "NH", name: "New Hampshire", lat: 43.7, lon: -71.6 },
-    { code: "NJ", name: "New Jersey", lat: 40.2, lon: -74.7 },
-    { code: "NM", name: "New Mexico", lat: 34.5, lon: -106.0 },
-    { code: "NY", name: "New York", lat: 40.7, lon: -74.0 },
-    { code: "NC", name: "North Carolina", lat: 35.6, lon: -79.8 },
-    { code: "ND", name: "North Dakota", lat: 47.5, lon: -100.5 },
-    { code: "OH", name: "Ohio", lat: 40.4, lon: -82.9 },
-    { code: "OK", name: "Oklahoma", lat: 35.5, lon: -97.5 },
-    { code: "OR", name: "Oregon", lat: 44.0, lon: -120.5 },
-    { code: "PA", name: "Pennsylvania", lat: 41.2, lon: -77.2 },
-    { code: "RI", name: "Rhode Island", lat: 41.7, lon: -71.5 },
-    { code: "SC", name: "South Carolina", lat: 33.8, lon: -81.0 },
-    { code: "SD", name: "South Dakota", lat: 44.5, lon: -100.2 },
-    { code: "TN", name: "Tennessee", lat: 35.5, lon: -86.6 },
-    { code: "TX", name: "Texas", lat: 31.0, lon: -100.0 },
-    { code: "UT", name: "Utah", lat: 39.3, lon: -111.7 },
-    { code: "VT", name: "Vermont", lat: 44.0, lon: -72.7 },
-    { code: "VA", name: "Virginia", lat: 37.5, lon: -78.9 },
-    { code: "WA", name: "Washington", lat: 47.4, lon: -120.5 },
-    { code: "WV", name: "West Virginia", lat: 38.9, lon: -80.5 },
-    { code: "WI", name: "Wisconsin", lat: 44.5, lon: -89.5 },
-    { code: "WY", name: "Wyoming", lat: 43.0, lon: -107.5 },
-  ];
-
-  const stations = [];
-  let id = 0;
-
-  for (const state of states) {
-    // 6 stations per state = 300 total for 50 states
-    const stationCount = 6;
-    for (let i = 0; i < stationCount && id < 300; i++) {
-      const latOffset = (Math.random() - 0.5) * 4;
-      const lonOffset = (Math.random() - 0.5) * 6;
-
-      // Generate seasonal base temperature
-      const now = new Date();
-      const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
-      const seasonalFactor = Math.cos(((dayOfYear - 200) / 365) * 2 * Math.PI);
-      const baseTemp = 15 + (40 - Math.abs(state.lat)) * 0.4 + seasonalFactor * 15;
-
-      const high = baseTemp + Math.random() * 8 - 2;
-      const low = high - 8 - Math.random() * 6;
-
-      // Generate accuracy metrics
-      const tempError = 1.5 + Math.random() * 2;
-      const precipAccuracy = 70 + Math.random() * 25;
-
-      // Simulate actual observed temps (with realistic error from predictions)
-      const actualError = (Math.random() - 0.5) * 6; // -3 to +3 degree error
-      const actualHigh = high + actualError + (Math.random() - 0.5) * 2;
-      const actualLow = low + actualError + (Math.random() - 0.5) * 2;
-
-      // Current temperature (between low and high based on time of day)
-      const hour = new Date().getHours();
-      const dayProgress = Math.sin(((hour - 6) / 12) * Math.PI); // Peak at 2pm
-      const currentTemp = actualLow + (actualHigh - actualLow) * Math.max(0, dayProgress);
-
-      stations.push({
-        id: `USC00${(300000 + id).toString().padStart(6, "0")}`,
-        name: `${state.name} Station ${i + 1}`,
-        state: state.code,
-        latitude: state.lat + latOffset,
-        longitude: state.lon + lonOffset,
-        elevation: Math.floor(Math.random() * 2000) + 50,
-        // Predicted values (from LILITH model)
-        forecast_high: Math.round(high * 10) / 10,
-        forecast_low: Math.round(low * 10) / 10,
-        // Actual observed values (from station sensors)
-        actual_high: Math.round(actualHigh * 10) / 10,
-        actual_low: Math.round(actualLow * 10) / 10,
-        current_temp: Math.round(currentTemp * 10) / 10,
-        // Errors
-        high_error: Math.round((high - actualHigh) * 10) / 10,
-        low_error: Math.round((low - actualLow) * 10) / 10,
-        precipitation_probability: Math.round(Math.random() * 100) / 100,
-        temp_error_avg: Math.round(tempError * 100) / 100,
-        precip_accuracy: Math.round(precipAccuracy * 10) / 10,
-        predictions_count: 0, // Real predictions - not yet tracking
-        verified_count: 0, // Verified predictions - not yet tracking
-        trend: "stable" as "improving" | "stable" | "declining",
-        last_updated: new Date().toISOString(),
-        last_observation: new Date(Date.now() - Math.random() * 300000).toISOString(), // Within last 5 min
-      });
-
-      id++;
-    }
-  }
-
-  return stations;
-};
+const Map = dynamic(() => import("@/components/Map"), {
+  ssr: false,
+  loading: () => <div className="h-[600px] w-full bg-white/5 animate-pulse rounded-2xl" />
+});
 
 function convertTemp(celsius: number, unit: "C" | "F"): number {
   if (unit === "F") {
@@ -158,10 +43,12 @@ export default function StationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "accuracy" | "temp">("name");
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "table" | "map">("grid");
 
-  // Generate mock stations (would come from API in production)
-  const allStations = useMemo(() => generateMockStations(), []);
+  // Fetch stations from API
+  // We use a large page size to get "all" stations as requested, but in a real app we'd implementing scrolling pagination
+  const { data, isLoading } = useStations({ pageSize: 5000 });
+  const allStations = useMemo(() => data?.stations || [], [data]);
 
   // Filter and sort stations
   const filteredStations = useMemo(() => {
@@ -172,7 +59,7 @@ export default function StationsPage() {
       filtered = filtered.filter(
         (s) =>
           s.name.toLowerCase().includes(query) ||
-          s.id.toLowerCase().includes(query) ||
+          s.station_id.toLowerCase().includes(query) ||
           s.state.toLowerCase().includes(query)
       );
     }
@@ -198,16 +85,16 @@ export default function StationsPage() {
 
   // Get unique states for filter
   const states = useMemo(() => {
-    const uniqueStates = [...new Set(allStations.map((s) => s.state))];
+    const uniqueStates = Array.from(new Set(allStations.map((s) => s.state))).filter(Boolean);
     return uniqueStates.sort();
   }, [allStations]);
 
   // Calculate global stats
   const globalStats = useMemo(() => {
     return {
-      totalStations: allStations.length,
+      totalStations: data?.total || 0,
     };
-  }, [allStations]);
+  }, [data]);
 
   return (
     <main className="relative min-h-screen overflow-hidden">
@@ -239,21 +126,19 @@ export default function StationsPage() {
               <div className="flex bg-white/10 backdrop-blur-sm rounded-lg p-1">
                 <button
                   onClick={() => setTemperatureUnit("C")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    temperatureUnit === "C"
-                      ? "bg-purple-500 text-white shadow-lg"
-                      : "text-white/70 hover:text-white"
-                  }`}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${temperatureUnit === "C"
+                    ? "bg-purple-500 text-white shadow-lg"
+                    : "text-white/70 hover:text-white"
+                    }`}
                 >
                   °C
                 </button>
                 <button
                   onClick={() => setTemperatureUnit("F")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    temperatureUnit === "F"
-                      ? "bg-purple-500 text-white shadow-lg"
-                      : "text-white/70 hover:text-white"
-                  }`}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${temperatureUnit === "F"
+                    ? "bg-purple-500 text-white shadow-lg"
+                    : "text-white/70 hover:text-white"
+                    }`}
                 >
                   °F
                 </button>
@@ -263,11 +148,10 @@ export default function StationsPage() {
               <div className="flex bg-white/10 backdrop-blur-sm rounded-lg p-1">
                 <button
                   onClick={() => setViewMode("grid")}
-                  className={`px-3 py-1.5 rounded-md text-sm transition-all ${
-                    viewMode === "grid"
-                      ? "bg-white/20 text-white"
-                      : "text-white/70 hover:text-white"
-                  }`}
+                  className={`px-3 py-1.5 rounded-md text-sm transition-all ${viewMode === "grid"
+                    ? "bg-white/20 text-white"
+                    : "text-white/70 hover:text-white"
+                    }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -275,14 +159,24 @@ export default function StationsPage() {
                 </button>
                 <button
                   onClick={() => setViewMode("table")}
-                  className={`px-3 py-1.5 rounded-md text-sm transition-all ${
-                    viewMode === "table"
-                      ? "bg-white/20 text-white"
-                      : "text-white/70 hover:text-white"
-                  }`}
+                  className={`px-3 py-1.5 rounded-md text-sm transition-all ${viewMode === "table"
+                    ? "bg-white/20 text-white"
+                    : "text-white/70 hover:text-white"
+                    }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setViewMode("map")}
+                  className={`px-3 py-1.5 rounded-md text-sm transition-all ${viewMode === "map"
+                    ? "bg-white/20 text-white"
+                    : "text-white/70 hover:text-white"
+                    }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-1.447-.894L15 7m0 13V7" />
                   </svg>
                 </button>
               </div>
@@ -376,14 +270,14 @@ export default function StationsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
               {filteredStations.map((station) => (
                 <GlassCard
-                  key={station.id}
+                  key={station.station_id}
                   className="cursor-pointer hover:scale-[1.02] transition-transform"
                   hover
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <h3 className="font-semibold text-white text-sm line-clamp-1">{station.name}</h3>
-                      <p className="text-white/40 text-xs">{station.id}</p>
+                      <p className="text-white/40 text-xs">{station.station_id}</p>
                     </div>
                     <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-white/60">
                       {station.state}
@@ -417,8 +311,8 @@ export default function StationsPage() {
                         </div>
                       </div>
                       <div className="mt-1 flex items-center justify-center">
-                        <span className={`text-xs font-medium ${Math.abs(station.high_error) < 2 ? "text-green-400" : Math.abs(station.high_error) < 4 ? "text-yellow-400" : "text-red-400"}`}>
-                          {station.high_error > 0 ? "+" : ""}{station.high_error}° error
+                        <span className={`text-xs font-medium ${Math.abs(station.high_error || 0) < 2 ? "text-green-400" : Math.abs(station.high_error || 0) < 4 ? "text-yellow-400" : "text-red-400"}`}>
+                          {(station.high_error || 0) > 0 ? "+" : ""}{station.high_error || 0}° error
                         </span>
                       </div>
                     </div>
@@ -436,8 +330,8 @@ export default function StationsPage() {
                         </div>
                       </div>
                       <div className="mt-1 flex items-center justify-center">
-                        <span className={`text-xs font-medium ${Math.abs(station.low_error) < 2 ? "text-green-400" : Math.abs(station.low_error) < 4 ? "text-yellow-400" : "text-red-400"}`}>
-                          {station.low_error > 0 ? "+" : ""}{station.low_error}° error
+                        <span className={`text-xs font-medium ${Math.abs(station.low_error || 0) < 2 ? "text-green-400" : Math.abs(station.low_error || 0) < 4 ? "text-yellow-400" : "text-red-400"}`}>
+                          {(station.low_error || 0) > 0 ? "+" : ""}{station.low_error || 0}° error
                         </span>
                       </div>
                     </div>
@@ -461,6 +355,21 @@ export default function StationsPage() {
                 </GlassCard>
               ))}
             </div>
+          ) : viewMode === "map" ? (
+            <GlassCard className="h-[70vh] p-0 overflow-hidden relative">
+              <Map
+                center={[39.8283, -98.5795]}
+                zoom={4}
+                markers={filteredStations.map(s => ({
+                  position: [s.latitude, s.longitude],
+                  title: s.name,
+                  description: `Current: ${convertTemp(s.current_temp, temperatureUnit)}° | High: ${convertTemp(s.forecast_high, temperatureUnit)}°`
+                }))}
+              />
+              <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-md p-2 rounded-lg text-xs text-white/70 pointer-events-none z-[1000]">
+                Showing {filteredStations.length} stations
+              </div>
+            </GlassCard>
           ) : (
             /* Table View */
             <GlassCard>
@@ -484,12 +393,12 @@ export default function StationsPage() {
                   <tbody>
                     {filteredStations.map((station) => (
                       <tr
-                        key={station.id}
+                        key={station.station_id}
                         className="border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
                       >
                         <td className="py-3 px-2">
                           <p className="text-white text-sm font-medium">{station.name}</p>
-                          <p className="text-white/40 text-xs">{station.id}</p>
+                          <p className="text-white/40 text-xs">{station.station_id}</p>
                         </td>
                         <td className="py-3 px-2">
                           <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-white/60">
@@ -508,8 +417,8 @@ export default function StationsPage() {
                         <td className="py-3 px-2 text-center text-orange-400 font-medium">
                           {convertTemp(station.actual_high, temperatureUnit)}°
                         </td>
-                        <td className={`py-3 px-2 text-center font-medium ${Math.abs(station.high_error) < 2 ? "text-green-400" : Math.abs(station.high_error) < 4 ? "text-yellow-400" : "text-red-400"}`}>
-                          {station.high_error > 0 ? "+" : ""}{station.high_error}°
+                        <td className={`py-3 px-2 text-center font-medium ${Math.abs(station.high_error || 0) < 2 ? "text-green-400" : Math.abs(station.high_error || 0) < 4 ? "text-yellow-400" : "text-red-400"}`}>
+                          {(station.high_error || 0) > 0 ? "+" : ""}{station.high_error || 0}°
                         </td>
                         <td className="py-3 px-2 text-center text-blue-400 font-medium">
                           {convertTemp(station.forecast_low, temperatureUnit)}°
@@ -517,8 +426,8 @@ export default function StationsPage() {
                         <td className="py-3 px-2 text-center text-cyan-400 font-medium">
                           {convertTemp(station.actual_low, temperatureUnit)}°
                         </td>
-                        <td className={`py-3 px-2 text-center font-medium ${Math.abs(station.low_error) < 2 ? "text-green-400" : Math.abs(station.low_error) < 4 ? "text-yellow-400" : "text-red-400"}`}>
-                          {station.low_error > 0 ? "+" : ""}{station.low_error}°
+                        <td className={`py-3 px-2 text-center font-medium ${Math.abs(station.low_error || 0) < 2 ? "text-green-400" : Math.abs(station.low_error || 0) < 4 ? "text-yellow-400" : "text-red-400"}`}>
+                          {(station.low_error || 0) > 0 ? "+" : ""}{station.low_error || 0}°
                         </td>
                         <td className="py-3 px-2 text-center text-lg">
                           {getTrendIcon(station.trend)}

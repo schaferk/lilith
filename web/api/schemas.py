@@ -112,6 +112,21 @@ class StationInfo(BaseModel):
     longitude: float = Field(..., description="Longitude")
     elevation: float = Field(..., description="Elevation (m)")
     country: str = Field(..., description="Country code")
+    state: Optional[str] = Field(None, description="State code")
+    
+    # Live/Mock Data Fields
+    current_temp: Optional[float] = Field(None, description="Current temperature")
+    forecast_high: Optional[float] = Field(None, description="Forecast high temperature")
+    forecast_low: Optional[float] = Field(None, description="Forecast low temperature")
+    actual_high: Optional[float] = Field(None, description="Actual high temperature")
+    actual_low: Optional[float] = Field(None, description="Actual low temperature")
+    trend: Optional[str] = Field(None, description="Accuracy trend")
+    last_observation: Optional[str] = Field(None, description="Last observation time")
+    temp_error_avg: Optional[float] = Field(None, description="Average temperature error")
+    precip_accuracy: Optional[float] = Field(None, description="Precipitation accuracy")
+    high_error: Optional[float] = Field(None, description="High temp error")
+    low_error: Optional[float] = Field(None, description="Low temp error")
+    
     start_date: Optional[str] = Field(None, description="First observation date")
     end_date: Optional[str] = Field(None, description="Last observation date")
 
