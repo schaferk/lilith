@@ -49,8 +49,6 @@ from web.api.schemas import (
     PredictionRecord,
     AccuracyStats,
     AccuracyReportResponse,
-    MetarStation,
-    MetarMonitorResponse,
 )
 
 # Global state for model
@@ -68,12 +66,7 @@ _hourly_verifications: list[dict] = []  # List of verification results
 _last_verification_time: datetime = None
 _verification_task = None  # Background task for 5-minute verification
 
-# METAR monitoring with hourly caching
-_metar_stations: dict[str, MetarStation] = {}  # station_id -> station data
-_metar_last_update: datetime = None
-_metar_cache: list = []  # Cached list of MetarStation objects
-_metar_cache_time: datetime = None  # When cache was last updated
-_metar_task = None  # Background task for METAR monitoring
+
 
 # Load training stations from JSON (505 stations)
 def _load_training_stations():
@@ -103,7 +96,7 @@ def get_forecaster():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    global _forecaster, _config, _verification_task, _metar_task, _weather_service
+    global _forecaster, _config, _verification_task, _weather_service
     from web.api.services.weather_service import WeatherService
     
     # Initialize Weather Service
@@ -157,9 +150,6 @@ async def lifespan(app: FastAPI):
     _verification_task = asyncio.create_task(_verification_loop())
     logger.info("Started 5-minute verification background task")
 
-    _metar_task = asyncio.create_task(_metar_monitor_loop())
-    logger.info("Started METAR monitoring background task")
-
     yield
 
     # Cleanup - cancel background tasks
@@ -172,14 +162,6 @@ async def lifespan(app: FastAPI):
         except asyncio.CancelledError:
             pass
         logger.info("Stopped verification background task")
-
-    if _metar_task:
-        _metar_task.cancel()
-        try:
-            await _metar_task
-        except asyncio.CancelledError:
-            pass
-        logger.info("Stopped METAR monitoring background task")
 
     _forecaster = None
 
@@ -617,151 +599,6 @@ async def verify_predictions():
     return {"message": f"Verified {verified_count} predictions", "verified_count": verified_count}
 
 
-# METAR Monitoring endpoints
-# Top 100 US airport ICAO codes for METAR monitoring
-US_AIRPORT_ICAOS = [
-    "KJFK", "KLAX", "KORD", "KATL", "KDEN", "KDFW", "KSFO", "KLAS", "KMIA", "KSEA",
-    "KPHX", "KEWR", "KMSP", "KDTW", "KBOS", "KPHL", "KLGA", "KFLL", "KBWI", "KSLC",
-    "KDCA", "KSAN", "KIAH", "KMCO", "KTPA", "KPDX", "KSTL", "KHNL", "KOAK", "KSMF",
-    "KSJC", "KSNA", "KMSY", "KCLT", "KPIT", "KAUS", "KIND", "KCLE", "KRDU", "KBNA",
-    "KSAT", "KCMH", "KMKE", "KABQ", "KJAX", "KONT", "KBUR", "KANC", "KOMA", "KSDF",
-    "KRIC", "KRSW", "KPBI", "KBDL", "KBUF", "KPVD", "KELP", "KALB", "KTUL", "KOKC",
-    "KMCI", "KDSM", "KLIT", "KCOS", "KGSO", "KTYS", "KBHM", "KSYR", "KGEG", "KPSP",
-    "KLBB", "KAMA", "KICT", "KSGF", "KLEX", "KFAT", "KRNO", "KBOI", "KMDW", "KDAL",
-    "KHOU", "KHPN", "KISP", "KSWF", "KPWM", "KBTV", "KMHT", "KORF", "KGRR", "KFWA",
-    "KSBN", "KCID", "KMLI", "KBZN", "KGFK", "KFAR", "KBIS", "KRAP", "KFSD", "KMSN"
-]
-
-@app.get("/v1/metar", response_model=MetarMonitorResponse, tags=["METAR"])
-async def get_metar_status():
-    """
-    Get current METAR monitoring status for US airports.
-    
-    Fetches real METAR data from aviationweather.gov with 1-hour caching.
-    Detects $ maintenance flags in raw METAR strings.
-    """
-    global _metar_cache, _metar_cache_time
-    
-    now = datetime.now()
-    
-    # Return cached data if less than 1 hour old
-    if _metar_cache and _metar_cache_time and (now - _metar_cache_time).total_seconds() < 3600:
-        flagged = sum(1 for s in _metar_cache if s.is_flagged)
-        missing = sum(1 for s in _metar_cache if s.is_missing)
-        healthy = len(_metar_cache) - flagged - missing
-        
-        return MetarMonitorResponse(
-            generated_at=_metar_cache_time,
-            total_stations=len(_metar_cache),
-            flagged_count=flagged,
-            missing_count=missing,
-            healthy_count=healthy,
-            stations=_metar_cache,
-            next_update_seconds=3600 - int((now - _metar_cache_time).total_seconds()),
-        )
-    
-    # Refresh cache - fetch real METAR from aviationweather.gov
-    logger.info(f"Refreshing METAR cache from aviationweather.gov for {len(US_AIRPORT_ICAOS)} airports...")
-    stations = []
-    
-    try:
-        # Fetch all airports in one batch request (up to 400 supported)
-        ids = ",".join(US_AIRPORT_ICAOS)
-        url = f"https://aviationweather.gov/api/data/metar?ids={ids}&format=json"
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, timeout=30.0)
-            response.raise_for_status()
-            metar_data = response.json()
-        
-        # Build a lookup dict by ICAO
-        metar_lookup = {m['icaoId']: m for m in metar_data}
-        logger.info(f"Received {len(metar_data)} METAR reports from aviationweather.gov")
-        
-        for icao in US_AIRPORT_ICAOS:
-            m = metar_lookup.get(icao)
-            
-            if m:
-                raw = m.get('rawOb', '')
-                is_flagged = '$' in raw  # Maintenance flag detection
-                
-                station = MetarStation(
-                    icao=icao,
-                    name=m.get('name', icao),
-                    latitude=m.get('lat', 0),
-                    longitude=m.get('lon', 0),
-                    elevation_m=m.get('elev'),
-                    raw_metar=raw,
-                    observation_time=m.get('reportTime'),
-                    is_flagged=is_flagged,
-                    is_missing=False,
-                    temperature_c=m.get('temp'),
-                    dewpoint_c=m.get('dewp'),
-                    wind_speed_kt=m.get('wspd'),
-                    wind_dir=m.get('wdir') if isinstance(m.get('wdir'), (int, float)) else None,
-                    visibility_sm=float(str(m.get('visib', '10')).replace('+', '')) if m.get('visib') else None,
-                    altimeter_inhg=round(m.get('altim', 0) * 0.02953, 2) if m.get('altim') else None,  # hPa to inHg
-                    weather=m.get('cover'),
-                    clouds=str(m.get('clouds', [])),
-                    last_checked=now,
-                )
-            else:
-                # Station not found in METAR response
-                station = MetarStation(
-                    icao=icao,
-                    name=icao,
-                    latitude=0,
-                    longitude=0,
-                    is_missing=True,
-                    last_checked=now,
-                )
-            
-            stations.append(station)
-            
-    except Exception as e:
-        logger.error(f"Failed to fetch METAR from aviationweather.gov: {e}")
-        # Return empty/error response
-        return MetarMonitorResponse(
-            generated_at=now,
-            total_stations=len(US_AIRPORT_ICAOS),
-            flagged_count=0,
-            missing_count=len(US_AIRPORT_ICAOS),
-            healthy_count=0,
-            stations=[],
-            next_update_seconds=60,  # Retry sooner on error
-        )
-    
-    # Update cache
-    _metar_cache = stations
-    _metar_cache_time = now
-    
-    flagged = sum(1 for s in stations if s.is_flagged)
-    missing = sum(1 for s in stations if s.is_missing)
-    healthy = len(stations) - flagged - missing
-    
-    logger.info(f"METAR cache updated: {len(stations)} stations, {flagged} flagged, {missing} missing")
-    
-    return MetarMonitorResponse(
-        generated_at=now,
-        total_stations=len(stations),
-        flagged_count=flagged,
-        missing_count=missing,
-        healthy_count=healthy,
-        stations=stations,
-        next_update_seconds=3600,
-    )
-
-
-@app.post("/v1/metar/refresh", tags=["METAR"])
-async def refresh_metar():
-    """
-    Force refresh METAR data for all stations.
-    """
-    global _metar_last_update
-    _metar_last_update = datetime.now()
-    return {"message": "METAR refresh triggered", "updated_at": _metar_last_update.isoformat()}
-
-
 def _get_nearby_stations(lat: float, lon: float) -> list:
     """
     Get nearby stations. 
@@ -996,16 +833,6 @@ def _verify_hourly_predictions():
     # In a real system, this would fetch real data
     # Here we simulate finding matches
     pass
-
-
-async def _metar_monitor_loop():
-    """Background task to monitor METAR stations."""
-    while True:
-        try:
-            # Poll METARs every 15 minutes
-            await asyncio.sleep(900)
-        except asyncio.CancelledError:
-            break
 
 
 def _verify_predictions_with_actuals():

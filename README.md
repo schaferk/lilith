@@ -1108,13 +1108,6 @@ LILITH_CHECKPOINT=checkpoints/lilith_best.pt python -m uvicorn web.api.main:app 
 
 LILITH fetches live data from external APIs. To avoid hitting rate limits:
 
-#### METAR Data (Aviation Weather)
-
-- **Source**: aviationweather.gov (no API key required)
-- **Cache**: 1 hour (configured in `web/api/main.py`)
-- **Stations**: 100 major US airports
-- Data is cached in memory and only refreshed hourly
-
 #### OpenWeatherMap (Station Weather)
 
 - **Source**: api.openweathermap.org
@@ -1137,7 +1130,6 @@ If you don't want to set up API keys, the app will still work but with limited f
 |---------|--------------|-----------------|
 | ML Forecasts | ✅ Full functionality | ✅ Full functionality |
 | Station Weather | ✅ Live data | ❌ No data displayed |
-| METAR Monitor | ✅ Real METAR with flags | ✅ Real METAR (no key needed) |
 | Fallback Forecasts | ✅ OWM-based | ❌ Error if model not loaded |
 
 ### Data Directory Structure
