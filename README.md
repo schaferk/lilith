@@ -1104,12 +1104,12 @@ LILITH_CHECKPOINT=checkpoints/lilith_best.pt python -m uvicorn web.api.main:app 
 
 LILITH fetches live data from external APIs. To avoid hitting rate limits:
 
-#### OpenWeatherMap (Station Weather)
+#### OpenWeatherMap (Forecast Adjustments)
 
 - **Source**: api.openweathermap.org
 - **Cache**: 15 minutes per location
-- **Rate Limit**: 1,000 calls/day on free tier, 60 calls/min
-- Used for station list weather data and fallback forecasts
+- **Rate Limit**: 1,000 calls/day on free tier
+- Used for fallback forecasts when ML model is unavailable
 
 To disable live data fetching entirely and use only the ML model:
 
