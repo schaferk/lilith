@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.venv
+.hf_venv
+__pycache__
+*.pyc
+.DS_Store
+curl_output.json
+*.log
